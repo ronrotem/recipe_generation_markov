@@ -13,6 +13,7 @@ def build_model(filename, newline=False, state_size=2):
         model = markovify.Text(text, state_size=state_size)
     return model
 
+
 def build_all_models_for_category(category='zakuski'):
     titles_model = build_model(f'{category}_titles_for_markovify_edaru.txt', newline=True, state_size=1)
     intros_model = build_model(f'{category}_intros_for_markovify_edaru.txt', newline=False, state_size=2)
@@ -26,11 +27,13 @@ def build_all_models_for_category(category='zakuski'):
             'allsteps_model' : allsteps_model, 'mainsteps_model' : mainsteps_model, 'laststeps_model' : laststeps_model, 
             'twolaststeps_model' : twolaststeps_model, 'advice_model' : advice_model}
 
+
 def build_all_the_models():
     full_dict = {}
     for category in ['zakuski', 'salads', 'soups', 'pies']:
         full_dict[category] = build_all_models_for_category(category)
     return full_dict
+
 
 def pick_category():
     choice = input('Выберите категорию блюда из списка: супы, салаты, горячие закуски, пироги, рандом')
@@ -49,6 +52,7 @@ def pick_category():
         pick_category()
     return cat
     
+
 def pick_title(giant_model, cat):
     if cat != 'рандом':
         for _ in range(20):
@@ -69,12 +73,14 @@ def pick_title(giant_model, cat):
         chosen_title = response.split('\t')[1]
         return cat, chosen_title
 
+
 def split_title_into_words(chosen_title):
     set_of_ingrs = set(chosen_title.split())
     for word in chosen_title.split():
         set_of_ingrs.add(word.lower())
         set_of_ingrs.add(word.capitalize())
     return set_of_ingrs
+
 
 def get_ingredient_wordforms(set_of_ingrs):
     possible_wordforms_for_ingrs = set()
@@ -90,7 +96,8 @@ def get_ingredient_wordforms(set_of_ingrs):
     possible_wordforms_for_ingrs.update(low_and_cap)
     return possible_wordforms_for_ingrs
 
-def produce_ingredients_from_title_first(full_dict, cat, possible_wordforms_for_ingrs):
+
+def produce_ingredients_from_title_first(giant_model, cat, possible_wordforms_for_ingrs):
     ingredient_list = []
     count = 0
     response = input('Логичнее или экспериментальнее?')
@@ -100,7 +107,7 @@ def produce_ingredients_from_title_first(full_dict, cat, possible_wordforms_for_
         response = True
     for wordform in possible_wordforms_for_ingrs:
         try:
-            ingr = full_dict[cat]['ingredients_model'].make_sentence_with_start(wordform, strict=False, tries=10, test_output=response)
+            ingr = giant_model[cat]['ingredients_model'].make_sentence_with_start(wordform, strict=False, tries=10, test_output=response)
             if ingr:
                 ingredient_list.append(ingr)
                 print(f'{count}\t{ingr}')
@@ -108,7 +115,7 @@ def produce_ingredients_from_title_first(full_dict, cat, possible_wordforms_for_
         except:
             pass
     while len(ingredient_list) <= 15:
-        ingr = full_dict[cat]['ingredients_model'].make_sentence(tries=10, test_output=response)
+        ingr = giant_model[cat]['ingredients_model'].make_sentence(tries=10, test_output=response)
         if ingr:
             ingredient_list.append(ingr)
             print(f'{count}\t{ingr}')
@@ -116,7 +123,8 @@ def produce_ingredients_from_title_first(full_dict, cat, possible_wordforms_for_
 
     return ingredient_list
 
-def modify_ingr_list(full_dict, ingredient_list, cat):
+
+def modify_ingr_list(giant_model, ingredient_list, cat):
     response = ''
     response = input('Если вы не хотите ничего удалять, нажмите Enter. Если вы хотите убрать какие-то из ингредиентов, введите их номера через пробел')
     if response:
@@ -126,12 +134,13 @@ def modify_ingr_list(full_dict, ingredient_list, cat):
     response = input('Если вы не хотите ничего добавлять, нажмите Enter. Если вы хотите добавить какие-то ингредиенты, введите их названия через пробел')
     if response:
         new_ingr_words = set(response.split(' '))
-        ingredient_list = add_more_ingrs_when_asked(full_dict, ingredient_list, new_ingr_words, cat)
-        modify_ingr_list(full_dict, ingredient_list, cat)
+        ingredient_list = add_more_ingrs_when_asked(giant_model, ingredient_list, new_ingr_words, cat)
+        modify_ingr_list(giant_model, ingredient_list, cat)
     
     return ingredient_list
 
-def add_more_ingrs_when_asked(full_dict, ingredient_list, set_of_ingrs, cat):
+
+def add_more_ingrs_when_asked(giant_model, ingredient_list, set_of_ingrs, cat):
     count = len(ingredient_list)
     wordforms = get_ingredient_wordforms(set_of_ingrs)
     response = input('Логичнее или экспериментальнее?')
@@ -141,7 +150,7 @@ def add_more_ingrs_when_asked(full_dict, ingredient_list, set_of_ingrs, cat):
         response = True
     for wordform in wordforms:
         try:
-            ingr = full_dict[cat]['ingredients_model'].make_sentence_with_start(wordform, strict=False, tries=10, test_output=response)
+            ingr = giant_model[cat]['ingredients_model'].make_sentence_with_start(wordform, strict=False, tries=10, test_output=response)
             if ingr:
                 ingredient_list.append(ingr)
                 print(f'{count}\t{ingr}')
@@ -150,6 +159,7 @@ def add_more_ingrs_when_asked(full_dict, ingredient_list, set_of_ingrs, cat):
             pass
 
     return ingredient_list
+
 
 def get_forms_for_ingrs(ingredient_list):
     cases = ['nomn', 'gent', 'datv', 'accs', 'ablt', 'loct']
@@ -175,13 +185,14 @@ def get_forms_for_ingrs(ingredient_list):
         list_of_form_lists.append(item_sublist)
     return list_of_form_lists
 
-def produce_steps(full_dict, list_of_ingrs_form_lists, cat, model='mainsteps_model'):
+
+def produce_steps(giant_model, list_of_ingrs_form_lists, cat, model='mainsteps_model'):
     count = 0
     steps = []
     for sublist in list_of_ingrs_form_lists:
         for wordform in sublist:
             try:
-                step = full_dict[cat][model].make_sentence_with_start(wordform, strict=False, tries=10,                                                                                                     test_output=False)
+                step = giant_model[cat][model].make_sentence_with_start(wordform, strict=False, tries=10,                                                                                                     test_output=False)
                 if step:
                     steps.append(step)
                     print(f'{count}\t{step}')
@@ -195,7 +206,8 @@ def produce_steps(full_dict, list_of_ingrs_form_lists, cat, model='mainsteps_mod
 
     return steps_kept
 
-def produce_start_text(full_dict, chosen_title, list_of_ingrs_form_lists, cat, model='advice_model'):
+
+def produce_start_text(giant_model, chosen_title, list_of_ingrs_form_lists, cat, model='advice_model'):
     text_list = []
     for _ in range(len(re.findall(',', chosen_title))+1):
         chosen_title = re.sub(',', '', chosen_title)
@@ -206,7 +218,7 @@ def produce_start_text(full_dict, chosen_title, list_of_ingrs_form_lists, cat, m
     for sublist in list_of_ingrs_form_lists:
         for wordform in sublist:
                 try:
-                    text = full_dict[cat][model].make_sentence_with_start(wordform, strict=False, tries=50, test_output=False)
+                    text = giant_model[cat][model].make_sentence_with_start(wordform, strict=False, tries=50, test_output=False)
                     if text:
                         text_temp.append(text)
                         print(f'{count}\t{text}')
@@ -219,7 +231,7 @@ def produce_start_text(full_dict, chosen_title, list_of_ingrs_form_lists, cat, m
         to_keep = response.split(' ')
         text_kept = [text_temp[int(x)] for x in to_keep]
     else:
-        text_temp = [full_dict[cat][model].make_sentence(tries=100, test_output=True) for _ in range(3)]
+        text_temp = [giant_model[cat][model].make_sentence(tries=100, test_output=True) for _ in range(3)]
         for index, text in enumerate(text_temp):
             print(f'{index}\t{text}')
         response = input(f'Выберите те фрагменты, которые подходят, чтобы начать генерировать {tip} к рецепту, и напишите их номера через пробел')
@@ -229,13 +241,14 @@ def produce_start_text(full_dict, chosen_title, list_of_ingrs_form_lists, cat, m
 
     return text_kept
 
-def produce_text_based_on_prior_text(full_dict, text_kept, cat, model='advice_model'):
+
+def produce_text_based_on_prior_text(giant_model, text_kept, cat, model='advice_model'):
     nexts = []
     for sentence in text_kept:
         words = sentence.strip('.').split()
         for wordform in words:
             try:
-                next_sentence = full_dict[cat][model].make_sentence_with_start(wordform, strict=False, tries=50,                                                                                                     test_output=True)
+                next_sentence = giant_model[cat][model].make_sentence_with_start(wordform, strict=False, tries=50,                                                                                                     test_output=True)
                 if next_sentence:
                     response = input(f'Добавить это предложение? {next_sentence}')
                     if response == 'да':
@@ -248,7 +261,7 @@ def produce_text_based_on_prior_text(full_dict, text_kept, cat, model='advice_mo
     else:
         if len(text_kept) < 2:
             try:
-                next_sentence = full_dict[cat][model].make_sentence(tries=50,                                                                                                     test_output=True)
+                next_sentence = giant_model[cat][model].make_sentence(tries=50,                                                                                                     test_output=True)
                 if next_sentence:
                     response = input(f'Добавить это предложение? {next_sentence}')
                     if response == 'да':
@@ -257,8 +270,9 @@ def produce_text_based_on_prior_text(full_dict, text_kept, cat, model='advice_mo
                 pass
         return text_kept
 
-def print_beautifully(chosen_title, intro_text, ingredient_list, mainsteps, last_steps, advice_text):
-    steps = mainsteps + last_steps
+
+def print_beautifully(chosen_title, intro_text, ingredient_list, main_steps, last_steps, advice_text):
+    steps = main_steps + last_steps
     print(f'{chosen_title}\n')
 
     for x in intro_text:
